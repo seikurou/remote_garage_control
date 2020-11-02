@@ -92,7 +92,7 @@ void setup()
   //Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
   //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
   timer.setInterval(MEASURE_INTERVAL, updateUltrasonic);
-  timer.setInterval(MEASURE_INTERVAL/2, updateDHT);
+  timer.setInterval(THIRTY_MINUTES/2, updateDHT);
 }
 
 
