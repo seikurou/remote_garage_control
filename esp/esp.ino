@@ -33,10 +33,12 @@
 
 /* Comment this out to disable prints and save space */
 //#define BLYNK_PRINT Serial
-
+#define DHTTYPE DHT11
 
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
 #include "keys.h"
 
 // You should get Auth Token in the Blynk App.
@@ -52,11 +54,16 @@ const static double MILLIS_TO_INCH = .0067515;
 
 const int trigPin = 0;
 const int echoPin = 4;
+const int DHTPin = 5;
 
 const static int VPIN_STATE = 1; // Blynk virtual pin denoting garage state
 const static int VPIN_TIME = 2; // Blynk virtual pin denoting time since last cycle
+const static int VPIN_TEMP = 3;
+const static int VPIN_HUMID = 4;
+const static int VPIN_STATE_RAW = 5;
 
 BlynkTimer timer;
+DHT dht(DHTPin, DHTTYPE);
 
 boolean isGarageOpen = false;
 
@@ -73,7 +80,7 @@ const static long THIRTY_MINUTES = 1800000; //milliseconds
 
 void setup()
 {
-  digitalWrite(5, HIGH);
+  digitalWrite(14, HIGH);
   // Debug console
   //  Serial.begin(9600);
 
@@ -85,6 +92,7 @@ void setup()
   //Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
   //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
   timer.setInterval(MEASURE_INTERVAL, updateUltrasonic);
+  timer.setInterval(MEASURE_INTERVAL/2, updateDHT);
 }
 
 
@@ -121,13 +129,15 @@ void checkForNewState(bool newState) {
 
 // called if the garage has transitioned into a different state
 void garageCycle() {
-  last_garage_cycle = 0;
+  last_garage_cycle = millis();
   if (isGarageOpen) {
     Blynk.virtualWrite(VPIN_STATE, "Garage is open");
+    Blynk.virtualWrite(VPIN_STATE_RAW, 1);
     textNotifyTimerId = timer.setTimeout(THIRTY_MINUTES, textNotifyOpen);
     notified = false;
   } else {
     Blynk.virtualWrite(VPIN_STATE, "Garage is closed");
+    Blynk.virtualWrite(VPIN_STATE_RAW, 0);
     if (!notified) {
       timer.disable(textNotifyTimerId);
     }
@@ -151,6 +161,16 @@ void textNotifyOpen() {
   notified = true;
 }
 
+void updateDHT() {
+  float newT = dht.readTemperature();
+  float newH = dht.readHumidity();
+  if (!isnan(newT)) {
+    Blynk.virtualWrite(VPIN_TEMP, newT);
+  }
+  if (!isnan(newH)) {
+    Blynk.virtualWrite(VPIN_HUMID, newH);
+  }
+}
 
 String formatMillis(unsigned long m) {
   m = m / 1000;
